@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Universal AI Interface</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gemini: {
+                            bg: '#131314',
+                            sidebar: '#1e1f20',
+                            card: '#1e1f20',
+                            hover: '#2d2e30',
+                            border: '#333537',
+                            text: '#e3e3e3',
+                            muted: '#c4c7c5',
+                            accent: '#8ab4f8',
+                            input: '#1e1f20'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.js"></script>
+    <style>
+        /* Custom Scrollbar for sleek UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444746;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5f6368;
+        }
+        .prose pre {
+            background-color: #1e1f20 !important;
+            border: 1px solid #333537;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .prose code {
+            color: #8ab4f8;
+            background-color: rgba(255,255,255,0.08);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+        }
+        .prose pre code {
+            color: #e3e3e3;
+            background-color: transparent;
+            padding: 0;
+        }
+        html, body {
+            height: 100dvh;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="h-full bg-gemini-bg text-gemini-text flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- App Container -->
+    <div id="app" class="flex h-full w-full overflow-hidden relative">
+
+        <!-- Sidebar Backdrop for Mobile -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-gemini-sidebar border-r border-gemini-border flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0 shrink-0">
+            <!-- Sidebar Header -->
+            <div class="p-3 flex items-center justify-between">
+                <button onclick="toggleSidebar()" class="p-2.5 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors" title="Collapse Sidebar">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <button onclick="openSettings()" class="p-2.5 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors md:hidden" title="Settings">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </div>
+
+            <!-- New Chat Button -->
+            <div class="px-3 mb-2">
+                <button onclick="createNewChat()" class="w-full flex items-center gap-3 bg-[#1a293b] hover:bg-[#20344d] text-[#8ab4f8] px-4 py-3 rounded-full text-sm font-medium transition-colors shadow-sm">
+                    <i class="fa-solid fa-plus text-base"></i>
+                    <span>New chat</span>
+                </button>
+            </div>
+
+            <!-- Recent Chats Header -->
+            <div class="px-4 py-2 text-xs font-semibold text-gemini-muted tracking-wider">
+                Recent
+            </div>
+
+            <!-- Chat History List -->
+            <div id="chat-history-list" class="flex-1 overflow-y-auto px-2 space-y-1">
+                <!-- Dynamically populated chats -->
+            </div>
+
+            <!-- Sidebar Footer / Settings Trigger -->
+            <div class="p-3 border-t border-gemini-border hidden md:block">
+                <button onclick="openSettings()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gemini-hover text-gemini-muted hover:text-white text-sm transition-colors">
+                    <i class="fa-solid fa-gear text-base"></i>
+                    <span>Settings & API Key</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="flex-1 flex flex-col h-full min-w-0 bg-gemini-bg relative">
+            
+            <!-- Top Navbar -->
+            <header class="h-14 px-4 flex items-center justify-between shrink-0 border-b border-transparent">
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleSidebar()" class="p-2.5 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors md:hidden">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div class="relative group">
+                        <button class="flex items-center gap-1.5 text-lg font-medium text-gemini-muted hover:text-white px-2 py-1 rounded-lg transition-colors">
+                            <span id="current-model-display">Gemini 1.5 Flash</span>
+                            <i class="fa-solid fa-chevron-down text-xs opacity-70"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- User Profile / Actions -->
+                <div class="flex items-center gap-2">
+                    <button onclick="openSettings()" class="hidden md:flex p-2.5 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors" title="Settings">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </button>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm shadow-inner">
+                        AI
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Messages Scroll Container -->
+            <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-6 space-y-6 scroll-smooth">
+                <!-- Welcome / Empty State -->
+                <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto px-4">
+                    <div class="text-5xl font-bold bg-gradient-to-r from-blue-400 via-teal-300 to-purple-400 bg-clip-text text-transparent mb-3">
+                        Hello, there
+                    </div>
+                    <div class="text-3xl font-medium text-gemini-muted mb-8">
+                        How can I help you today?
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                        <button onclick="sendPresetPrompt('Explain quantum computing in simple terms')" class="p-4 rounded-xl bg-gemini-card hover:bg-gemini-hover border border-gemini-border text-left transition-colors group">
+                            <div class="text-sm font-medium text-gemini-text group-hover:text-blue-400">Explain quantum computing</div>
+                            <div class="text-xs text-gemini-muted mt-1">in simple terms for beginners</div>
+                        </button>
+                        <button onclick="sendPresetPrompt('Write a python script to scrape a website using BeautifulSoup')" class="p-4 rounded-xl bg-gemini-card hover:bg-gemini-hover border border-gemini-border text-left transition-colors group">
+                            <div class="text-sm font-medium text-gemini-text group-hover:text-blue-400">Write Python script</div>
+                            <div class="text-xs text-gemini-muted mt-1">for web scraping with BeautifulSoup</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Message stream appended dynamically here -->
+            </div>
+
+            <!-- Input Form Area -->
+            <div class="p-4 bg-gemini-bg shrink-0 max-w-4xl w-full mx-auto">
+                <div class="bg-gemini-input border border-gemini-border rounded-3xl p-2.5 focus-within:border-blue-500 transition-all shadow-lg">
+                    <textarea id="user-input" rows="1" placeholder="Enter a prompt here..." class="w-full bg-transparent text-gemini-text placeholder-gemini-muted px-3 py-1.5 focus:outline-none resize-none max-h-36 text-sm md:text-base" oninput="autoResize(this)" onkeydown="handleKeydown(event)"></textarea>
+                    
+                    <div class="flex items-center justify-between px-2 pt-2 border-t border-gemini-border/40 mt-1">
+                        <div class="flex items-center gap-1">
+                            <button class="p-2 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors" title="Attach file">
+                                <i class="fa-solid fa-circle-plus text-base"></i>
+                            </button>
+                            <button class="p-2 rounded-full hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors" title="Use microphone">
+                                <i class="fa-solid fa-microphone text-base"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="send-btn" onclick="handleSendMessage()" class="p-2.5 rounded-full bg-white text-black hover:bg-gemini-muted transition-colors disabled:opacity-30 disabled:hover:bg-white" disabled title="Send message">
+                                <i class="fa-solid fa-arrow-up text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-2 text-[11px] text-gemini-muted">
+                    Gemini may display inaccurate info, including about people, so double-check its responses.
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+        <div class="bg-gemini-sidebar border border-gemini-border rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center justify-between pb-4 border-b border-gemini-border">
+                <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-blue-400"></i> Settings
+                </h3>
+                <button onclick="closeSettings()" class="p-2 rounded-lg hover:bg-gemini-hover text-gemini-muted hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 py-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gemini-muted uppercase tracking-wider mb-2">OpenRouter API Key</label>
+                    <input type="password" id="api-key-input" placeholder="sk-or-v1-..." class="w-full bg-gemini-bg border border-gemini-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
+                    <p class="text-[11px] text-gemini-muted mt-1">Get your key free/paid from <a href="https://openrouter.ai/keys" target="_blank" class="text-blue-400 underline">openrouter.ai/keys</a></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gemini-muted uppercase tracking-wider mb-2">OpenRouter Model Name</label>
+                    <input type="text" id="model-input" placeholder="google/gemini-2.5-flash" class="w-full bg-gemini-bg border border-gemini-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
+                    <p class="text-[11px] text-gemini-muted mt-1">E.g., <code>google/gemini-2.5-flash</code>, <code>anthropic/claude-3.5-sonnet</code></p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-gemini-border">
+                <button onclick="closeSettings()" class="px-4 py-2 rounded-xl hover:bg-gemini-hover text-sm font-medium text-gemini-muted transition-colors">Cancel</button>
+                <button onclick="saveSettings()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-medium text-white transition-colors shadow-sm">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        // State Management
+        let chats = JSON.parse(localStorage.getItem('gemini_chats') || '[]');
+        let currentChatId = localStorage.getItem('gemini_current_chat_id') || null;
+        let apiKey = localStorage.getItem('gemini_api_key') || '';
+        let customModel = localStorage.getItem('gemini_model') || 'google/gemini-2.5-flash';
+
+        // DOM Elements
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatHistoryList = document.getElementById('chat-history-list');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const settingsModal = document.getElementById('settings-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const modelInput = document.getElementById('model-input');
+        const currentModelDisplay = document.getElementById('current-model-display');
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            apiKeyInput.value = apiKey;
+            modelInput.value = customModel;
+            currentModelDisplay.textContent = customModel.split('/').pop();
+            renderChatHistory();
+            if (currentChatId && chats.some(c => c.id === currentChatId)) {
+                loadChat(currentChatId);
+            } else if (chats.length > 0) {
+                loadChat(chats[0].id);
+            } else {
+                toggleWelcome(true);
+            }
+            
+            // Input listener for send button state
+            userInput.addEventListener('input', () => {
+                sendBtn.disabled = userInput.value.trim() === '';
+            });
+        });
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+            sendBtn.disabled = textarea.value.trim() === '';
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                if (!sendBtn.disabled) {
+                    handleSendMessage();
+                }
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        function openSettings() {
+            apiKeyInput.value = apiKey;
+            modelInput.value = customModel;
+            settingsModal.classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            settingsModal.classList.add('hidden');
+        }
+
+        function saveSettings() {
+            apiKey = apiKeyInput.value.trim();
+            customModel = modelInput.value.trim() || 'google/gemini-2.5-flash';
+            localStorage.setItem('gemini_api_key', apiKey);
+            localStorage.setItem('gemini_model', customModel);
+            currentModelDisplay.textContent = customModel.split('/').pop();
+            closeSettings();
+        }
+
+        function toggleWelcome(show) {
+            if (show) {
+                welcomeScreen.style.display = 'flex';
+            } else {
+                welcomeScreen.style.display = 'none';
+            }
+        }
+
+        function createNewChat() {
+            const newChat = {
+                id: 'chat_' + Date.now(),
+                title: 'New Chat',
+                messages: []
+            };
+            chats.unshift(newChat);
+            saveChatsToStorage();
+            loadChat(newChat.id);
+            renderChatHistory();
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        function loadChat(chatId) {
+            currentChatId = chatId;
+            localStorage.setItem('gemini_current_chat_id', chatId);
+            const chat = chats.find(c => c.id === chatId);
+            
+            chatContainer.innerHTML = '';
+            if (!chat || chat.messages.length === 0) {
+                chatContainer.appendChild(welcomeScreen);
+                toggleWelcome(true);
+            } else {
+                toggleWelcome(false);
+                chat.messages.forEach(msg => {
+                    appendMessageToDOM(msg.role, msg.content, false);
+                });
+            }
+            renderChatHistory();
+            scrollToBottom();
+        }
+
+        function renderChatHistory() {
+            chatHistoryList.innerHTML = '';
+            chats.forEach(chat => {
+                const isActive = chat.id === currentChatId;
+                const div = document.createElement('div');
+                div.className = `group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-colors ${isActive ? 'bg-gemini-hover text-white font-medium' : 'text-gemini-muted hover:bg-gemini-hover/50 hover:text-white'}`;
+                div.onclick = () => {
+                    loadChat(chat.id);
+                    if (window.innerWidth < 768) toggleSidebar();
+                };
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'truncate flex-1 pr-2';
+                titleSpan.textContent = chat.title || 'New Chat';
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1';
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'p-1 hover:text-red-400 rounded';
+                deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can text-xs"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteChat(chat.id);
+                };
+
+                actionsDiv.appendChild(deleteBtn);
+                div.appendChild(titleSpan);
+                div.appendChild(actionsDiv);
+                chatHistoryList.appendChild(div);
+            });
+        }
+
+        function deleteChat(chatId) {
+            chats = chats.filter(c => c.id !== chatId);
+            saveChatsToStorage();
+            if (currentChatId === chatId) {
+                if (chats.length > 0) {
+                    loadChat(chats[0].id);
+                } else {
+                    currentChatId
